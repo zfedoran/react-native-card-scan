@@ -81,6 +81,7 @@ public class CardScanModule extends ReactContextBaseJavaModule implements Activi
             map.putInt    ("expiryYear"                 , scanResult.expiryYear);
             map.putString ("postalCode"                 , scanResult.postalCode);
             map.putInt    ("cvvLength"                  , cardType.cvvLength());
+            map.putString ("cvv"                        , scanResult.cvv);
             map.putString ("cardType"                   , cardType.getDisplayName("en"));
 
             this.mPromise.resolve(map);
