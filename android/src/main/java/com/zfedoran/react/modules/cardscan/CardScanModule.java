@@ -15,15 +15,15 @@ import android.graphics.Color;
 import io.card.payment.CardIOActivity;
 import io.card.payment.CreditCard;
 import io.card.payment.CardType;
+import com.facebook.react.bridge.ActivityEventListener;
 
-public class CardScanModule extends ReactContextBaseJavaModule {
+public class CardScanModule extends ReactContextBaseJavaModule implements ActivityEventListener{
     int MY_SCAN_REQUEST_CODE = 42;
-    Activity mActivity       = null;
     Promise mPromise         = null;
 
-    public CardScanModule(ReactApplicationContext reactContext, Activity activity) {
+    public CardScanModule(ReactApplicationContext reactContext) {
         super(reactContext);
-        this.mActivity = activity;
+        reactContext.addActivityEventListener(this);
     }
 
     @Override
@@ -31,22 +31,26 @@ public class CardScanModule extends ReactContextBaseJavaModule {
         return "CardScan";
     }
 
+    public void onNewIntent(Intent intent) { }
+
     @ReactMethod
     public void scanCard(Promise promise) {
         this.mPromise = promise;
-
-        Intent scanIntent = new Intent(this.mActivity, CardIOActivity.class);
+        Activity currentActivity = getCurrentActivity();
+        Intent scanIntent = new Intent(currentActivity, CardIOActivity.class);
 
         // customize these values to suit your needs.
         scanIntent.putExtra(CardIOActivity.EXTRA_REQUIRE_EXPIRY, true); // default: false
-        scanIntent.putExtra(CardIOActivity.EXTRA_REQUIRE_CVV, false); // default: false
+        scanIntent.putExtra(CardIOActivity.EXTRA_REQUIRE_CVV, true); // default: false
         scanIntent.putExtra(CardIOActivity.EXTRA_REQUIRE_POSTAL_CODE, false); // default: false
         scanIntent.putExtra(CardIOActivity.EXTRA_RESTRICT_POSTAL_CODE_TO_NUMERIC_ONLY, false); // default: false
-        scanIntent.putExtra(CardIOActivity.EXTRA_REQUIRE_CARDHOLDER_NAME, false); // default: false
+        scanIntent.putExtra(CardIOActivity.EXTRA_REQUIRE_CARDHOLDER_NAME, true); // default: false
         scanIntent.putExtra(CardIOActivity.EXTRA_USE_CARDIO_LOGO, false);
         scanIntent.putExtra(CardIOActivity.EXTRA_HIDE_CARDIO_LOGO, true);
         scanIntent.putExtra(CardIOActivity.EXTRA_USE_PAYPAL_ACTIONBAR_ICON, false);
-        scanIntent.putExtra(CardIOActivity.EXTRA_GUIDE_COLOR, Color.GRAY);
+        scanIntent.putExtra(CardIOActivity.EXTRA_GUIDE_COLOR, Color.WHITE);
+        scanIntent.putExtra(CardIOActivity.EXTRA_SCAN_INSTRUCTIONS, true);
+        scanIntent.putExtra(CardIOActivity.EXTRA_SCAN_EXPIRY, true);
 
         // hides the manual entry button
         // if set, developers should provide their own manual entry mechanism in the app
@@ -56,10 +60,10 @@ public class CardScanModule extends ReactContextBaseJavaModule {
         scanIntent.putExtra(CardIOActivity.EXTRA_KEEP_APPLICATION_THEME, false); // default: false
 
         // MY_SCAN_REQUEST_CODE is arbitrary and is only used within this activity.
-        this.mActivity.startActivityForResult(scanIntent, MY_SCAN_REQUEST_CODE);
+        currentActivity.startActivityForResult(scanIntent, MY_SCAN_REQUEST_CODE);
     }
 
-    public void handleActivityResult(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
         String resultStr;
         if (data != null && data.hasExtra(CardIOActivity.EXTRA_SCAN_RESULT)) {
             CreditCard scanResult = data.getParcelableExtra(CardIOActivity.EXTRA_SCAN_RESULT);
@@ -72,11 +76,12 @@ public class CardScanModule extends ReactContextBaseJavaModule {
             map.putString ("redactedCardNumber"         , scanResult.getRedactedCardNumber());
             map.putBoolean("isExpiryValid"              , scanResult.isExpiryValid());
             map.putString ("cardholderName"             , scanResult.cardholderName);
-            map.putString ("cardNumber"                 , scanResult.cardholderName);
+            map.putString ("cardNumber"                 , scanResult.cardNumber);
             map.putInt    ("expiryMonth"                , scanResult.expiryMonth);
             map.putInt    ("expiryYear"                 , scanResult.expiryYear);
             map.putString ("postalCode"                 , scanResult.postalCode);
             map.putInt    ("cvvLength"                  , cardType.cvvLength());
+            map.putString ("cvv"                        , scanResult.cvv);
             map.putString ("cardType"                   , cardType.getDisplayName("en"));
 
             this.mPromise.resolve(map);
